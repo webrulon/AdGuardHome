@@ -25,9 +25,11 @@ var (
 )
 
 func initFiltering() {
-	loadFilters()
+	loadFilters(config.Filters)
+	loadFilters(config.WhitelistFilters)
 	deduplicateFilters()
 	updateUniqueFilterID(config.Filters)
+	updateUniqueFilterID(config.WhitelistFilters)
 }
 
 func startFiltering() {
@@ -54,6 +56,7 @@ type filter struct {
 	RulesCount  int       `yaml:"-"`
 	LastUpdated time.Time `yaml:"-"`
 	checksum    uint32    // checksum of the file data
+	white       bool
 
 	dnsfilter.Filter `yaml:",inline"`
 }
@@ -133,41 +136,44 @@ func filterExists(url string) bool {
 	return r
 }
 
-// Return TRUE if a filter with this URL exists
 func filterExistsNoLock(url string) bool {
-	r := false
-	for i := range config.Filters {
-		if config.Filters[i].URL == url {
-			r = true
-			break
+	for _, f := range config.Filters {
+		if f.URL == url {
+			return true
 		}
 	}
-	return r
+	for _, f := range config.WhitelistFilters {
+		if f.URL == url {
+			return true
+		}
+	}
+	return false
 }
 
 // Add a filter
 // Return FALSE if a filter with this URL exists
 func filterAdd(f filter) bool {
 	config.Lock()
+	defer config.Unlock()
 
 	// Check for duplicates
-	for i := range config.Filters {
-		if config.Filters[i].URL == f.URL {
-			config.Unlock()
-			return false
-		}
+	if filterExistsNoLock(f.URL) {
+		return false
 	}
 
-	config.Filters = append(config.Filters, f)
-	config.Unlock()
+	if f.white {
+		config.WhitelistFilters = append(config.WhitelistFilters, f)
+	} else {
+		config.Filters = append(config.Filters, f)
+	}
 	return true
 }
 
 // Load filters from the disk
 // And if any filter has zero ID, assign a new one
-func loadFilters() {
-	for i := range config.Filters {
-		filter := &config.Filters[i] // otherwise we're operating on a copy
+func loadFilters(array []filter) {
+	for i := range array {
+		filter := &array[i] // otherwise we're operating on a copy
 		if filter.ID == 0 {
 			filter.ID = assignUniqueFilterID()
 		}
@@ -560,21 +566,39 @@ func (filter *filter) LastTimeUpdated() time.Time {
 }
 
 func enableFilters(async bool) {
-	var filters map[int]string
+	var filters []dnsfilter.Filter
+	var whiteFilters []dnsfilter.Filter
 	if config.DNS.FilteringEnabled {
 		// convert array of filters
-		filters = make(map[int]string)
 
 		userFilter := userFilter()
-		filters[int(userFilter.ID)] = string(userFilter.Data)
+		f := dnsfilter.Filter{
+			ID:   userFilter.ID,
+			Data: userFilter.Data,
+		}
+		filters = append(filters, f)
 
 		for _, filter := range config.Filters {
 			if !filter.Enabled {
 				continue
 			}
-			filters[int(filter.ID)] = filter.Path()
+			f := dnsfilter.Filter{
+				ID:       filter.ID,
+				FilePath: filter.Path(),
+			}
+			filters = append(filters, f)
+		}
+		for _, filter := range config.WhitelistFilters {
+			if !filter.Enabled {
+				continue
+			}
+			f := dnsfilter.Filter{
+				ID:       filter.ID,
+				FilePath: filter.Path(),
+			}
+			whiteFilters = append(whiteFilters, f)
 		}
 	}
 
-	_ = Context.dnsFilter.SetFilters(filters, async)
+	_ = Context.dnsFilter.SetFilters(filters, whiteFilters, async)
 }
