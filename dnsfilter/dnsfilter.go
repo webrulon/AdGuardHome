@@ -518,7 +518,7 @@ func (d *Dnsfilter) matchHost(host string, qtype uint16, ctags []string, white b
 		return Result{}, nil
 	}
 
-	frules, ok := d.filteringEngine.Match(host, ctags)
+	frules, ok := engine.Match(host, ctags)
 	if !ok {
 		return Result{}, nil
 	}
