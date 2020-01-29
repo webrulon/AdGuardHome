@@ -6,13 +6,12 @@ import { Trans, withNamespaces } from 'react-i18next';
 import PageTitle from '../ui/PageTitle';
 import Card from '../ui/Card';
 import CellWrap from '../ui/CellWrap';
-import UserRules from './UserRules';
 import Modal from './Modal';
 import { formatDetailedDateTime } from '../../helpers/helpers';
 
 import { MODAL_TYPE } from '../../helpers/constants';
 
-class Filters extends Component {
+class DnsBlocklist extends Component {
     componentDidMount() {
         this.props.getFilteringStatus();
     }
@@ -35,7 +34,7 @@ class Filters extends Component {
         } else {
             this.props.addFilter(url, name);
         }
-    }
+    };
 
     renderCheckbox = ({ original }) => {
         const { processingConfigFilter } = this.props.filtering;
@@ -170,7 +169,6 @@ class Filters extends Component {
         } = this.props;
         const {
             filters,
-            userRules,
             isModalOpen,
             isFilterAdded,
             processingRefreshFilters,
@@ -186,7 +184,8 @@ class Filters extends Component {
 
         return (
             <Fragment>
-                <PageTitle title={t('filters')} />
+                {console.log(this.props)}
+                <PageTitle title={t('dns_blocklist')} />
                 <div className="content">
                     <div className="row">
                         <div className="col-md-12">
@@ -236,11 +235,6 @@ class Filters extends Component {
                             </Card>
                         </div>
                         <div className="col-md-12">
-                            <UserRules
-                                userRules={userRules}
-                                handleRulesChange={this.handleRulesChange}
-                                handleRulesSubmit={this.handleRulesSubmit}
-                            />
                         </div>
                     </div>
                 </div>
@@ -260,7 +254,7 @@ class Filters extends Component {
     }
 }
 
-Filters.propTypes = {
+DnsBlocklist.propTypes = {
     setRules: PropTypes.func,
     getFilteringStatus: PropTypes.func.isRequired,
     filtering: PropTypes.shape({
@@ -285,4 +279,4 @@ Filters.propTypes = {
     t: PropTypes.func.isRequired,
 };
 
-export default withNamespaces()(Filters);
+export default withNamespaces()(DnsBlocklist);
