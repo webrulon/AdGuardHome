@@ -121,10 +121,15 @@ func handleInstallCheckConfig(w http.ResponseWriter, r *http.Request) {
 			interfaceName := getInterfaceByIP(reqData.DNS.IP)
 			staticIPStatus := "yes"
 
-			if reqData.DNS.SetStaticIP {
+			if len(interfaceName) == 0 {
+				staticIPStatus = "error"
+				respData.StaticIP.Error = fmt.Sprintf("Couldn't find network interface by IP %s", reqData.DNS.IP)
+
+			} else if reqData.DNS.SetStaticIP {
 				err = setStaticIP(interfaceName)
 				staticIPStatus = "error"
 				respData.StaticIP.Error = err.Error()
+
 			} else {
 				// check if we have a static IP
 				isStaticIP, err := hasStaticIP(interfaceName)
